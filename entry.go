@@ -41,11 +41,17 @@ func NewEntry(key []byte, value []byte) *Entry {
 */
 func (entry *Entry) Encode() []byte {
 	buf := make([]byte, entry.GetSize())
+
+	// Header
 	binary.BigEndian.PutUint32(buf[4:8], entry.timeStamp)
 	binary.BigEndian.PutUint32(buf[8:12], entry.keySize)
 	binary.BigEndian.PutUint32(buf[12:16], entry.valueSize)
+
+	// Data
 	copy(buf[entryHeaderSize:entryHeaderSize+entry.keySize], entry.Key)
 	copy(buf[entryHeaderSize+entry.keySize:], entry.Value)
+
+	// CRC
 	binary.BigEndian.PutUint32(buf[0:4], crc32.ChecksumIEEE(buf[4:]))
 	return buf
 }
