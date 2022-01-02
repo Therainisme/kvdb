@@ -7,7 +7,7 @@ type PositionMap map[string]*Position
 type Position struct {
 	FileId    int64
 	TimeStamp uint32
-	EntrySize uint64
+	EntrySize int64
 	Offset    int64
 }
 

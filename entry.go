@@ -20,8 +20,8 @@ type Entry struct {
 const entryHeaderSize = 16
 
 // HeaderSize + KeySize + ValueSize
-func (entry *Entry) GetSize() uint64 {
-	return uint64(entryHeaderSize + entry.keySize + entry.valueSize)
+func (entry *Entry) GetSize() int64 {
+	return int64(entryHeaderSize + entry.keySize + entry.valueSize)
 }
 
 func NewEntry(key []byte, value []byte) *Entry {
