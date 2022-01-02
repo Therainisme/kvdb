@@ -1,14 +1,15 @@
 package kvdb
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
 )
 
 const (
-	DataFileSuffix       = "kvdb.data"
-	ActiveDataFileSuffix = "kvdb.data.active"
+	DataFileSuffix       = ".kvdb.data"
+	ActiveDataFileSuffix = ".kvdb.data.active"
 )
 
 const (
@@ -49,4 +50,16 @@ func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 
 	kf.mutex.Unlock()
 	return nil
+}
+
+func (kf *KvdbFile) ReadEntry(pos *Position) (entry *Entry, err error) {
+	buf := make([]byte, pos.EntrySize)
+	_, err = kf.File.ReadAt(buf, pos.Offset)
+	if err != nil {
+		fmt.Printf("Read entry failed, err:%v", err)
+		return
+	}
+
+	entry, err = EntryDecode(buf)
+	return
 }
