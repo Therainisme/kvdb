@@ -87,3 +87,25 @@ func EntryDecode(buf []byte) (entry *Entry, err error) {
 
 	return
 }
+
+func EntryHeaderDecode(buf []byte) (entry *Entry, err error) {
+	if len(buf) != 16 {
+		err = errors.New("Entry header length doesn't match")
+		return
+	}
+
+	// Header
+	crc := binary.BigEndian.Uint32(buf[0:4])
+	timeStamp := binary.BigEndian.Uint32(buf[4:8])
+	keySize := binary.BigEndian.Uint32(buf[8:12])
+	valueSize := binary.BigEndian.Uint32(buf[12:16])
+
+	entry = &Entry{
+		crc:       crc,
+		timeStamp: timeStamp,
+		keySize:   keySize,
+		valueSize: valueSize,
+	}
+
+	return
+}

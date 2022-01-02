@@ -3,6 +3,7 @@ package kvdb
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 func Open(directoryPath string) *KvdbHandle {
@@ -68,14 +69,19 @@ func (handle *KvdbHandle) Close() error {
 }
 
 func InitIndex(dfIdArray []int64, directoryPath string) (*PositionMap, *KvdbFileMap) {
-	var keydir PositionMap
-	var kvdbFileMap KvdbFileMap
+	var keydir PositionMap = PositionMap{
+		data:  make(map[string]*Position),
+		mutex: sync.Mutex{},
+	}
+	var kvdbFileMap KvdbFileMap = KvdbFileMap{
+		data:  make(map[int64]*KvdbFile),
+		mutex: sync.Mutex{},
+	}
 
 	for _, dfId := range dfIdArray {
 		kvdbFile := OpenOlderDataFile(dfId, directoryPath+"/")
 		kvdbFileMap.Set(dfId, kvdbFile)
-
-		// todo generate keydir
+		keydir.Update(kvdbFile)
 	}
 
 	return &keydir, &kvdbFileMap

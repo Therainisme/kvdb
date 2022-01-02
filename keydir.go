@@ -1,6 +1,10 @@
 package kvdb
 
-import "sync"
+import (
+	"fmt"
+	"io"
+	"sync"
+)
 
 type PositionMap struct {
 	data  map[string]*Position
@@ -49,4 +53,25 @@ func (kd *PositionMap) GetPosition(key []byte) (pos *Position, err error) {
 	pos = kd.Get(key)
 	err = nil
 	return
+}
+
+// Rebuild keydir of a data file
+func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
+	headerBuf := make([]byte, entryHeaderSize)
+	offset := int64(0)
+
+	for {
+		_, err := kvdbFile.File.ReadAt(headerBuf, offset)
+		if err != nil {
+			if err == io.EOF {
+				return
+			} else {
+				panic(fmt.Sprintf("Update keydir failed, fileId:%d, err:%v", kvdbFile.FileId, err))
+			}
+		}
+
+		entry, _ := EntryHeaderDecode(headerBuf)
+		kd.PutPosition(entry, kvdbFile.FileId, offset)
+		offset += entry.GetSize()
+	}
 }
