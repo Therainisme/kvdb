@@ -2,7 +2,10 @@ package kvdb
 
 import "sync"
 
-type PositionMap map[string]*Position
+type PositionMap struct {
+	data  map[string]*Position
+	mutex sync.Mutex
+}
 
 type Position struct {
 	FileId    int64
@@ -11,23 +14,20 @@ type Position struct {
 	Offset    int64
 }
 
-var Keydir = make(PositionMap)
-var mutex sync.Mutex
-
 func (kd *PositionMap) Set(key []byte, pos *Position) {
-	mutex.Lock()
+	kd.mutex.Lock()
 
-	Keydir[string(key)] = pos
+	kd.data[string(key)] = pos
 
-	mutex.Unlock()
+	kd.mutex.Unlock()
 }
 
 func (kd *PositionMap) Get(key []byte) (pos *Position) {
-	mutex.Lock()
+	kd.mutex.Lock()
 
-	pos = Keydir[string(key)]
+	pos = kd.data[string(key)]
 
-	mutex.Unlock()
+	kd.mutex.Unlock()
 
 	return
 }
