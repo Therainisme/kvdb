@@ -14,6 +14,7 @@ const (
 const (
 	ActiveType = "active"
 	OlderType  = "older"
+	MergedType = "merged"
 	HintType   = "hint"
 )
 
@@ -35,6 +36,20 @@ func CreateActiveDataFile(fileId int64, directoryPath string) *KvdbFile {
 		File:   file,
 		FileId: fileId,
 		Type:   ActiveType,
+		offset: 0,
+	}
+}
+
+func CreateMergedDataFile(fileId int64, directoryPath string) *KvdbFile {
+	fileName := strconv.FormatInt(fileId, 10)
+	file, err := os.OpenFile(directoryPath+"/"+fileName+DataFileSuffix, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	if err != nil {
+		panic(err.Error())
+	}
+	return &KvdbFile{
+		File:   file,
+		FileId: fileId,
+		Type:   MergedType,
 		offset: 0,
 	}
 }

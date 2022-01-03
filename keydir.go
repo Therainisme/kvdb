@@ -22,7 +22,8 @@ func (kd *PositionMap) Set(key []byte, pos *Position) {
 	kd.mutex.Lock()
 
 	oldPos := kd.data[string(key)]
-	if oldPos == nil || oldPos.TimeStamp < pos.TimeStamp {
+
+	if oldPos == nil || oldPos.TimeStamp <= pos.TimeStamp {
 		kd.data[string(key)] = pos
 	}
 

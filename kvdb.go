@@ -2,6 +2,7 @@ package kvdb
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -83,7 +84,57 @@ func (handle *KvdbHandle) ListKeys() Keys {
 	return nil
 }
 
-func (handle *KvdbHandle) Merge(directoryName string) error {
+func (db *KvdbHandle) Merge() error {
+	mergedFile := CreateMergedDataFile(time.Now().Unix(), db.DirectoryPath)
+	redundantEntryMap := &EntryMap{}
+
+	// Iterate over all keys
+	db.FileMap.sm.Range(func(key, value interface{}) bool {
+		kvdbFile := value.(*KvdbFile)
+		if kvdbFile.Type == ActiveType || kvdbFile.Type == MergedType {
+			return true
+		}
+
+		headerBuf := make([]byte, 16)
+		offset := int64(0)
+
+		for {
+			_, err := kvdbFile.File.ReadAt(headerBuf, offset)
+			if err != nil {
+				if err == io.EOF {
+					break
+				} else {
+					panic(fmt.Sprintf("Merged data file failed, fileId:%d, err:%v", kvdbFile.FileId, err))
+				}
+			}
+
+			entryHeader, _ := EntryHeaderDecode(headerBuf)
+
+			entryBuf := make([]byte, entryHeader.GetSize())
+			_, _ = kvdbFile.File.ReadAt(entryBuf, offset)
+			entry, _ := EntryDecode(entryBuf)
+
+			oldEntry := redundantEntryMap.Get(entry.Key)
+			if oldEntry == nil || oldEntry.timeStamp <= entry.timeStamp {
+				redundantEntryMap.Set(entry.Key, entry)
+			}
+
+			offset += entry.GetSize()
+		}
+
+		return true
+	})
+
+	// Write to merged file
+	redundantEntryMap.sm.Range(func(key, value interface{}) bool {
+		entry := value.(*Entry)
+		mergedFile.AppendEntry(entry)
+		return true
+	})
+
+	// todo generate hint file
+	// todo remove old file
+
 	return nil
 }
 
@@ -97,8 +148,7 @@ func (handle *KvdbHandle) Close() error {
 
 func InitIndex(dfIdArray []int64, directoryPath string) (*KvdbFileMap, *PositionMap) {
 	var kvdbFileMap KvdbFileMap = KvdbFileMap{
-		data:  make(map[int64]*KvdbFile),
-		mutex: sync.Mutex{},
+		sm: sync.Map{},
 	}
 	var keydir PositionMap = PositionMap{
 		data:  make(map[string]*Position),

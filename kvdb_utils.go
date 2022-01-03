@@ -27,20 +27,41 @@ func ReadDataFileId(directory *os.File) []int64 {
 
 // Stored in a Kbdb instance
 type KvdbFileMap struct {
-	data  map[int64]*KvdbFile
-	mutex sync.Mutex
+	sm sync.Map
 }
 
 func (kfMap *KvdbFileMap) Get(fileId int64) (kvdbFile *KvdbFile) {
-	kfMap.mutex.Lock()
-	kvdbFile = kfMap.data[fileId]
-	kfMap.mutex.Unlock()
+
+	loadRes, ok := kfMap.sm.Load(fileId)
+	if !ok {
+		kvdbFile = nil
+	} else {
+		kvdbFile = loadRes.(*KvdbFile)
+	}
 
 	return
 }
 
 func (kfMap *KvdbFileMap) Set(fileId int64, kvdbFile *KvdbFile) {
-	kfMap.mutex.Lock()
-	kfMap.data[fileId] = kvdbFile
-	kfMap.mutex.Unlock()
+	kfMap.sm.Store(fileId, kvdbFile)
+}
+
+type EntryMap struct {
+	sm sync.Map
+}
+
+func (em *EntryMap) Get(key []byte) (entry *Entry) {
+
+	loadRes, ok := em.sm.Load(string(key))
+	if !ok {
+		entry = nil
+	} else {
+		entry = loadRes.(*Entry)
+	}
+
+	return
+}
+
+func (em *EntryMap) Set(key []byte, entry *Entry) {
+	em.sm.Store(string(key), entry)
 }
