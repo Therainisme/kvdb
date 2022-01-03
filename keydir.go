@@ -21,7 +21,10 @@ type Position struct {
 func (kd *PositionMap) Set(key []byte, pos *Position) {
 	kd.mutex.Lock()
 
-	kd.data[string(key)] = pos
+	oldPos := kd.data[string(key)]
+	if oldPos == nil || oldPos.TimeStamp < pos.TimeStamp {
+		kd.data[string(key)] = pos
+	}
 
 	kd.mutex.Unlock()
 }
@@ -60,6 +63,7 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 	headerBuf := make([]byte, entryHeaderSize)
 	offset := int64(0)
 
+	// Read the header of each entry
 	for {
 		_, err := kvdbFile.File.ReadAt(headerBuf, offset)
 		if err != nil {
@@ -71,14 +75,14 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 		}
 
 		entryHeader, _ := EntryHeaderDecode(headerBuf)
+
+		// Read the key
 		keyBuf := make([]byte, entryHeader.keySize)
 		_, _ = kvdbFile.File.ReadAt(keyBuf, offset+entryHeaderSize)
 
-		oldPos, _ := kd.GetPosition(keyBuf)
-		if oldPos == nil || oldPos.TimeStamp < entryHeader.timeStamp {
-			kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
-		}
+		kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
 
+		// Skip to the beginning of the next entry
 		offset += entryHeader.GetSize()
 	}
 }
