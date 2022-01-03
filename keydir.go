@@ -13,9 +13,9 @@ type PositionMap struct {
 
 type Position struct {
 	FileId    int64
-	TimeStamp uint32
-	EntrySize int64
+	ValueSize uint32
 	Offset    int64
+	TimeStamp uint32
 }
 
 func (kd *PositionMap) Set(key []byte, pos *Position) {
@@ -36,15 +36,15 @@ func (kd *PositionMap) Get(key []byte) (pos *Position) {
 	return
 }
 
-func (kd *PositionMap) PutPosition(entry *Entry, fileId int64, offset int64) error {
+func (kd *PositionMap) PutPosition(key []byte, entryHeader *EntryHeader, fileId int64, offset int64) error {
 	pos := &Position{
 		FileId:    fileId,
-		EntrySize: entry.GetSize(),
+		ValueSize: entryHeader.valueSize,
 		Offset:    offset,
-		TimeStamp: entry.timeStamp,
+		TimeStamp: entryHeader.timeStamp,
 	}
 
-	kd.Set(entry.Key, pos)
+	kd.Set(key, pos)
 
 	return nil
 }
@@ -70,8 +70,12 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 			}
 		}
 
-		entry, _ := EntryHeaderDecode(headerBuf)
-		kd.PutPosition(entry, kvdbFile.FileId, offset)
-		offset += entry.GetSize()
+		entryHeader, _ := EntryHeaderDecode(headerBuf)
+		keyBuf := make([]byte, entryHeader.keySize)
+		_, _ = kvdbFile.File.ReadAt(keyBuf, offset+entryHeaderSize)
+
+		kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
+
+		offset += entryHeader.GetSize()
 	}
 }

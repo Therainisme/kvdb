@@ -7,31 +7,37 @@ import (
 	"time"
 )
 
-type Entry struct {
+type EntryHeader struct {
 	crc       uint32
 	timeStamp uint32
 	keySize   uint32
 	valueSize uint32
-	Key       []byte
-	Value     []byte
+}
+
+type Entry struct {
+	*EntryHeader
+	Key   []byte
+	Value []byte
 }
 
 // CRC + TimeStamp + KeySize + ValueSize
 const entryHeaderSize = 16
 
 // HeaderSize + KeySize + ValueSize
-func (entry *Entry) GetSize() int64 {
-	return int64(entryHeaderSize + entry.keySize + entry.valueSize)
+func (eh *EntryHeader) GetSize() int64 {
+	return int64(entryHeaderSize + eh.keySize + eh.valueSize)
 }
 
 func NewEntry(key []byte, value []byte) *Entry {
 	entry := &Entry{
-		crc:       0,
-		timeStamp: uint32(time.Now().Unix()),
-		keySize:   uint32(len(key)),
-		valueSize: uint32(len(value)),
-		Key:       key,
-		Value:     value,
+		EntryHeader: &EntryHeader{
+			crc:       0,
+			timeStamp: uint32(time.Now().Unix()),
+			keySize:   uint32(len(key)),
+			valueSize: uint32(len(value)),
+		},
+		Key:   key,
+		Value: value,
 	}
 	return entry
 }
@@ -73,12 +79,14 @@ func EntryDecode(buf []byte) (entry *Entry, err error) {
 	copy(value, buf[entryHeaderSize+keySize:])
 
 	entry = &Entry{
-		crc:       crc,
-		timeStamp: timeStamp,
-		keySize:   keySize,
-		valueSize: valueSize,
-		Key:       key,
-		Value:     value,
+		EntryHeader: &EntryHeader{
+			crc:       crc,
+			timeStamp: timeStamp,
+			keySize:   keySize,
+			valueSize: valueSize,
+		},
+		Key:   key,
+		Value: value,
 	}
 
 	if crc != crc32.ChecksumIEEE(buf[4:]) {
@@ -88,7 +96,7 @@ func EntryDecode(buf []byte) (entry *Entry, err error) {
 	return
 }
 
-func EntryHeaderDecode(buf []byte) (entry *Entry, err error) {
+func EntryHeaderDecode(buf []byte) (entryHeader *EntryHeader, err error) {
 	if len(buf) != 16 {
 		err = errors.New("Entry header length doesn't match")
 		return
@@ -100,7 +108,7 @@ func EntryHeaderDecode(buf []byte) (entry *Entry, err error) {
 	keySize := binary.BigEndian.Uint32(buf[8:12])
 	valueSize := binary.BigEndian.Uint32(buf[12:16])
 
-	entry = &Entry{
+	entryHeader = &EntryHeader{
 		crc:       crc,
 		timeStamp: timeStamp,
 		keySize:   keySize,

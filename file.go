@@ -67,8 +67,9 @@ func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 	return nil
 }
 
+// deprecated
 func (kf *KvdbFile) ReadEntry(pos *Position) (entry *Entry, err error) {
-	buf := make([]byte, pos.EntrySize)
+	buf := make([]byte, pos.ValueSize)
 	_, err = kf.File.ReadAt(buf, pos.Offset)
 	if err != nil {
 		fmt.Printf("Read entry failed, err:%v", err)
