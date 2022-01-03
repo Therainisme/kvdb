@@ -39,6 +39,14 @@ func (kd *PositionMap) Get(key []byte) (pos *Position) {
 	return
 }
 
+func (kd *PositionMap) Delete(key []byte) {
+	kd.mutex.Lock()
+
+	delete(kd.data, string(key))
+
+	kd.mutex.Unlock()
+}
+
 func (kd *PositionMap) PutPosition(key []byte, entryHeader *EntryHeader, fileId int64, offset int64) error {
 	pos := &Position{
 		FileId:    fileId,
@@ -47,7 +55,11 @@ func (kd *PositionMap) PutPosition(key []byte, entryHeader *EntryHeader, fileId 
 		TimeStamp: entryHeader.timeStamp,
 	}
 
-	kd.Set(key, pos)
+	if pos.ValueSize == 0 {
+		kd.Delete(key)
+	} else {
+		kd.Set(key, pos)
+	}
 
 	return nil
 }

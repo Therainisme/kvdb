@@ -40,8 +40,9 @@ type Keys = []string
 func (db *KvdbHandle) Get(key []byte) ([]byte, error) {
 	pos := db.Keydir.Get(key)
 	if pos == nil {
-		return nil, nil
+		return []byte(""), nil
 	}
+
 	kf := db.FileMap.Get(pos.FileId)
 	entry, err := kf.ReadEntry(key, pos)
 
@@ -72,8 +73,8 @@ func (db *KvdbHandle) Put(key []byte, value []byte) error {
 	return err
 }
 
-func (handle *KvdbHandle) Delete(key []byte) error {
-	// todo
+func (db *KvdbHandle) Delete(key []byte) error {
+	db.Put(key, []byte(""))
 	return nil
 }
 
