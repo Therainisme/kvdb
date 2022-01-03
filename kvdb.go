@@ -35,23 +35,23 @@ type KvdbHandle struct {
 
 type Keys = []string
 
-func (db *KvdbHandle) Get(key string) ([]byte, error) {
-	pos := db.Keydir.Get([]byte(key))
+func (db *KvdbHandle) Get(key []byte) ([]byte, error) {
+	pos := db.Keydir.Get(key)
 	if pos == nil {
 		return nil, nil
 	}
 	kf := db.FileMap.Get(pos.FileId)
-	entry, err := kf.ReadEntry([]byte(key), pos)
+	entry, err := kf.ReadEntry(key, pos)
 
 	return entry.Value, err
 }
 
-func (handle *KvdbHandle) Put(key string, value interface{}) error {
+func (handle *KvdbHandle) Put(key []byte, value []byte) error {
 	// todo
 	return nil
 }
 
-func (handle *KvdbHandle) Delete(key string) error {
+func (handle *KvdbHandle) Delete(key []byte) error {
 	// todo
 	return nil
 }
