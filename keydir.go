@@ -74,7 +74,10 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 		keyBuf := make([]byte, entryHeader.keySize)
 		_, _ = kvdbFile.File.ReadAt(keyBuf, offset+entryHeaderSize)
 
-		kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
+		oldPos, _ := kd.GetPosition(keyBuf)
+		if oldPos == nil || oldPos.TimeStamp < entryHeader.timeStamp {
+			kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
+		}
 
 		offset += entryHeader.GetSize()
 	}
