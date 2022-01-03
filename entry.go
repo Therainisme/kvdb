@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type Entry struct {
+	*EntryHeader
+	*EntryKV
+}
+
 type EntryHeader struct {
 	crc       uint32
 	timeStamp uint32
@@ -14,8 +19,7 @@ type EntryHeader struct {
 	valueSize uint32
 }
 
-type Entry struct {
-	*EntryHeader
+type EntryKV struct {
 	Key   []byte
 	Value []byte
 }
@@ -36,8 +40,10 @@ func NewEntry(key []byte, value []byte) *Entry {
 			keySize:   uint32(len(key)),
 			valueSize: uint32(len(value)),
 		},
-		Key:   key,
-		Value: value,
+		EntryKV: &EntryKV{
+			Key:   key,
+			Value: value,
+		},
 	}
 	return entry
 }
@@ -85,8 +91,10 @@ func EntryDecode(buf []byte) (entry *Entry, err error) {
 			keySize:   keySize,
 			valueSize: valueSize,
 		},
-		Key:   key,
-		Value: value,
+		EntryKV: &EntryKV{
+			Key:   key,
+			Value: value,
+		},
 	}
 
 	if crc != crc32.ChecksumIEEE(buf[4:]) {

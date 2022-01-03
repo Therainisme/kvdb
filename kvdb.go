@@ -14,12 +14,11 @@ func Open(directoryPath string) *KvdbHandle {
 
 	directoryInfo, _ := directory.Stat()
 	if !directoryInfo.IsDir() {
-		err, _ := fmt.Printf("\"%s\" is not a directory\n", directoryPath)
-		panic(err)
+		panic(fmt.Sprintf("\"%s\" is not a directory\n", directoryPath))
 	}
 
 	dfIdArray := ReadDataFileId(directory)
-	keydir, fileMap := InitIndex(dfIdArray, directoryPath)
+	fileMap, keydir := InitIndex(dfIdArray, directoryPath)
 
 	return &KvdbHandle{
 		DirectoryPath: directoryPath,
@@ -36,9 +35,15 @@ type KvdbHandle struct {
 
 type Keys = []string
 
-func (handle *KvdbHandle) Get(key string) (interface{}, error) {
-	// todo
-	return 0, nil
+func (db *KvdbHandle) Get(key string) ([]byte, error) {
+	pos := db.Keydir.Get([]byte(key))
+	if pos == nil {
+		return nil, nil
+	}
+	kf := db.FileMap.Get(pos.FileId)
+	entry, err := kf.ReadEntry([]byte(key), pos)
+
+	return entry.Value, err
 }
 
 func (handle *KvdbHandle) Put(key string, value interface{}) error {
@@ -68,13 +73,13 @@ func (handle *KvdbHandle) Close() error {
 	return nil
 }
 
-func InitIndex(dfIdArray []int64, directoryPath string) (*PositionMap, *KvdbFileMap) {
-	var keydir PositionMap = PositionMap{
-		data:  make(map[string]*Position),
-		mutex: sync.Mutex{},
-	}
+func InitIndex(dfIdArray []int64, directoryPath string) (*KvdbFileMap, *PositionMap) {
 	var kvdbFileMap KvdbFileMap = KvdbFileMap{
 		data:  make(map[int64]*KvdbFile),
+		mutex: sync.Mutex{},
+	}
+	var keydir PositionMap = PositionMap{
+		data:  make(map[string]*Position),
 		mutex: sync.Mutex{},
 	}
 
@@ -84,5 +89,5 @@ func InitIndex(dfIdArray []int64, directoryPath string) (*PositionMap, *KvdbFile
 		keydir.Update(kvdbFile)
 	}
 
-	return &keydir, &kvdbFileMap
+	return &kvdbFileMap, &keydir
 }

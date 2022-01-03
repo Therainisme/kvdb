@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func ReadDataFileId(directory *os.File) []int64 {
@@ -22,4 +23,24 @@ func ReadDataFileId(directory *os.File) []int64 {
 	}
 
 	return fileIdArray
+}
+
+// Stored in a Kbdb instance
+type KvdbFileMap struct {
+	data  map[int64]*KvdbFile
+	mutex sync.Mutex
+}
+
+func (kfMap *KvdbFileMap) Get(fileId int64) (kvdbFile *KvdbFile) {
+	kfMap.mutex.Lock()
+	kvdbFile = kfMap.data[fileId]
+	kfMap.mutex.Unlock()
+
+	return
+}
+
+func (kfMap *KvdbFileMap) Set(fileId int64, kvdbFile *KvdbFile) {
+	kfMap.mutex.Lock()
+	kfMap.data[fileId] = kvdbFile
+	kfMap.mutex.Unlock()
 }

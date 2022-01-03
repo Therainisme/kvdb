@@ -67,35 +67,14 @@ func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 	return nil
 }
 
-// deprecated
-func (kf *KvdbFile) ReadEntry(pos *Position) (entry *Entry, err error) {
-	buf := make([]byte, pos.ValueSize)
+func (kf *KvdbFile) ReadEntry(key []byte, pos *Position) (entry *Entry, err error) {
+	buf := make([]byte, entryHeaderSize+len(key)+int(pos.ValueSize))
 	_, err = kf.File.ReadAt(buf, pos.Offset)
 	if err != nil {
-		fmt.Printf("Read entry failed, err:%v", err)
+		err = fmt.Errorf("read entry failed, err:%v ", err)
 		return
 	}
 
 	entry, err = EntryDecode(buf)
 	return
-}
-
-// Stored in a Kbdb instance
-type KvdbFileMap struct {
-	data  map[int64]*KvdbFile
-	mutex sync.Mutex
-}
-
-func (kfMap *KvdbFileMap) Get(fileId int64) (kvdbFile *KvdbFile) {
-	kfMap.mutex.Lock()
-	kvdbFile = kfMap.data[fileId]
-	kfMap.mutex.Unlock()
-
-	return
-}
-
-func (kfMap *KvdbFileMap) Set(fileId int64, kvdbFile *KvdbFile) {
-	kfMap.mutex.Lock()
-	kfMap.data[fileId] = kvdbFile
-	kfMap.mutex.Unlock()
 }
