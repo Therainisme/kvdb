@@ -46,6 +46,10 @@ func (kfMap *KvdbFileMap) Set(fileId int64, kvdbFile *KvdbFile) {
 	kfMap.sm.Store(fileId, kvdbFile)
 }
 
+func (kfMap *KvdbFileMap) Delete(fileId int64) {
+	kfMap.sm.Delete(fileId)
+}
+
 type EntryMap struct {
 	sm sync.Map
 }

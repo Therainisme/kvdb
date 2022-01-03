@@ -86,6 +86,8 @@ func (handle *KvdbHandle) ListKeys() Keys {
 
 func (db *KvdbHandle) Merge() error {
 	mergedFile := CreateMergedDataFile(time.Now().Unix(), db.DirectoryPath)
+	db.FileMap.Set(mergedFile.FileId, mergedFile)
+
 	redundantEntryMap := &EntryMap{}
 
 	// Iterate over all keys
@@ -128,12 +130,25 @@ func (db *KvdbHandle) Merge() error {
 	// Write to merged file
 	redundantEntryMap.sm.Range(func(key, value interface{}) bool {
 		entry := value.(*Entry)
+		db.Keydir.PutPosition(entry.Key, entry.EntryHeader, mergedFile.FileId, mergedFile.offset)
 		mergedFile.AppendEntry(entry)
 		return true
 	})
 
 	// todo generate hint file
-	// todo remove old file
+
+	// Remove old file
+	db.FileMap.sm.Range(func(key, value interface{}) bool {
+		kvdbFile := value.(*KvdbFile)
+		if kvdbFile.Type == ActiveType || kvdbFile.Type == MergedType {
+			return true
+		}
+		kvdbFile.File.Close()
+		db.FileMap.Delete(kvdbFile.FileId)
+
+		os.Remove(kvdbFile.File.Name())
+		return true
+	})
 
 	return nil
 }

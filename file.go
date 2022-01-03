@@ -82,6 +82,7 @@ func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 
 func (kf *KvdbFile) ReadEntry(key []byte, pos *Position) (entry *Entry, err error) {
 	buf := make([]byte, entryHeaderSize+len(key)+int(pos.ValueSize))
+
 	_, err = kf.File.ReadAt(buf, pos.Offset)
 	if err != nil {
 		err = fmt.Errorf("read entry failed, err:%v ", err)
