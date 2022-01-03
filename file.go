@@ -49,7 +49,7 @@ func OpenOlderDataFile(fileId int64, directoryPath string) *KvdbFile {
 	return &KvdbFile{
 		File:   file,
 		FileId: fileId,
-		Type:   ActiveType,
+		Type:   OlderType,
 		offset: 0,
 	}
 }
