@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 )
 
 func Open(directoryPath string) *KvdbHandle {
@@ -28,9 +29,10 @@ func Open(directoryPath string) *KvdbHandle {
 }
 
 type KvdbHandle struct {
-	DirectoryPath string
-	Keydir        *PositionMap
-	FileMap       *KvdbFileMap
+	DirectoryPath  string
+	Keydir         *PositionMap
+	FileMap        *KvdbFileMap
+	ActiveDataFile *KvdbFile
 }
 
 type Keys = []string
@@ -46,9 +48,28 @@ func (db *KvdbHandle) Get(key []byte) ([]byte, error) {
 	return entry.Value, err
 }
 
-func (handle *KvdbHandle) Put(key []byte, value []byte) error {
-	// todo
-	return nil
+func (db *KvdbHandle) Put(key []byte, value []byte) error {
+	entry := NewEntry(key, value)
+
+	// The DB must have an active file to write entries to.
+	if db.ActiveDataFile == nil {
+		fileId := time.Now().Unix()
+		db.ActiveDataFile = CreateActiveDataFile(fileId, db.DirectoryPath)
+		db.FileMap.Set(fileId, db.ActiveDataFile)
+	}
+
+	// Update keydir
+	db.Keydir.PutPosition(
+		key,
+		entry.EntryHeader,
+		db.ActiveDataFile.FileId,
+		db.ActiveDataFile.offset,
+	)
+
+	// Write to active file
+	err := db.ActiveDataFile.AppendEntry(entry)
+
+	return err
 }
 
 func (handle *KvdbHandle) Delete(key []byte) error {
@@ -84,7 +105,7 @@ func InitIndex(dfIdArray []int64, directoryPath string) (*KvdbFileMap, *Position
 	}
 
 	for _, dfId := range dfIdArray {
-		kvdbFile := OpenOlderDataFile(dfId, directoryPath+"/")
+		kvdbFile := OpenOlderDataFile(dfId, directoryPath)
 		kvdbFileMap.Set(dfId, kvdbFile)
 		keydir.Update(kvdbFile)
 	}

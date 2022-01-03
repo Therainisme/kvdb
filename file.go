@@ -27,7 +27,7 @@ type KvdbFile struct {
 
 func CreateActiveDataFile(fileId int64, directoryPath string) *KvdbFile {
 	fileName := strconv.FormatInt(fileId, 10)
-	file, err := os.OpenFile(directoryPath+fileName+DataFileSuffix, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	file, err := os.OpenFile(directoryPath+"/"+fileName+DataFileSuffix, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -42,7 +42,7 @@ func CreateActiveDataFile(fileId int64, directoryPath string) *KvdbFile {
 func OpenOlderDataFile(fileId int64, directoryPath string) *KvdbFile {
 	fileName := strconv.FormatInt(fileId, 10)
 	// read only
-	file, err := os.OpenFile(directoryPath+fileName+DataFileSuffix, os.O_RDONLY, 0666)
+	file, err := os.OpenFile(directoryPath+"/"+fileName+DataFileSuffix, os.O_RDONLY, 0666)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -59,8 +59,6 @@ func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 	kf.mutex.Lock()
 
 	kf.File.WriteAt(buf, kf.offset)
-	// Keydir.PutPosition(entry, kf.FileId, kf.offset)
-	// todo PutPostition
 	kf.offset += int64(len(buf))
 
 	kf.mutex.Unlock()
