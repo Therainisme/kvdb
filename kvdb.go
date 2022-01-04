@@ -19,7 +19,7 @@ func Open(directoryPath string) *KvdbHandle {
 		panic(fmt.Sprintf("\"%s\" is not a directory\n", directoryPath))
 	}
 
-	dfIdArray := ReadDataFileId(directory)
+	dfIdArray := GetAllDataFileId(directory)
 	fileMap, keydir := InitIndex(dfIdArray, directoryPath)
 
 	return &KvdbHandle{
@@ -86,14 +86,13 @@ func (handle *KvdbHandle) ListKeys() Keys {
 
 func (db *KvdbHandle) Merge() error {
 	mergedFile := CreateMergedDataFile(time.Now().Unix(), db.DirectoryPath)
-	db.DataFileMap.Set(mergedFile.FileId, mergedFile)
 
 	redundantEntryMap := &EntryMap{}
 
 	// Iterate over all keys
 	db.DataFileMap.sm.Range(func(key, value interface{}) bool {
 		dataFile := value.(*DataFile)
-		if dataFile.Type == ActiveType || dataFile.Type == MergedType {
+		if dataFile.Type != OlderType {
 			return true
 		}
 
@@ -144,10 +143,10 @@ func (db *KvdbHandle) Merge() error {
 		return true
 	})
 
-	// Remove old file
+	// Remove old data file
 	db.DataFileMap.sm.Range(func(key, value interface{}) bool {
 		kvdbFile := value.(*DataFile)
-		if kvdbFile.Type == ActiveType || kvdbFile.Type == MergedType {
+		if kvdbFile.Type != OlderType {
 			return true
 		}
 		kvdbFile.File.Close()
@@ -157,6 +156,9 @@ func (db *KvdbHandle) Merge() error {
 		return true
 	})
 
+	// After merge process, merged file will be as a ordinary data file
+	mergedFile.Type = OlderType
+	db.DataFileMap.Set(mergedFile.FileId, mergedFile)
 	return nil
 }
 

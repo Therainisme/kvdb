@@ -25,6 +25,17 @@ func (kf *DataFile) ReadEntry(key []byte, pos *Position) (entry *Entry, err erro
 	return
 }
 
+func (kf *DataFile) IsExistHintFile() bool {
+	filePath := kf.File.Name()
+	hintFilePath := filePath[0:len(filePath)-4] + "hint"
+	_, err := os.Stat(hintFilePath)
+	if err != nil && os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
+
 func CreateActiveDataFile(fileId int64, dir string) *DataFile {
 	file := openFile(fileId, dir, DataFileSuffix, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 	return &DataFile{

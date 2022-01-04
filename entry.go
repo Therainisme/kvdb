@@ -9,7 +9,7 @@ import (
 
 type Entry struct {
 	*EntryHeader
-	*EntryKV
+	*EntryData
 }
 
 type EntryHeader struct {
@@ -19,7 +19,7 @@ type EntryHeader struct {
 	valueSize uint32
 }
 
-type EntryKV struct {
+type EntryData struct {
 	Key   []byte
 	Value []byte
 }
@@ -40,7 +40,7 @@ func NewEntry(key []byte, value []byte) *Entry {
 			keySize:   uint32(len(key)),
 			valueSize: uint32(len(value)),
 		},
-		EntryKV: &EntryKV{
+		EntryData: &EntryData{
 			Key:   key,
 			Value: value,
 		},
@@ -91,7 +91,7 @@ func DecodeEntry(buf []byte) (entry *Entry, err error) {
 			keySize:   keySize,
 			valueSize: valueSize,
 		},
-		EntryKV: &EntryKV{
+		EntryData: &EntryData{
 			Key:   key,
 			Value: value,
 		},

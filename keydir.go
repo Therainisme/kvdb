@@ -1,10 +1,7 @@
 package kvdb
 
 import (
-	"encoding/binary"
-	"errors"
 	"io"
-	"os"
 	"sync"
 )
 
@@ -77,11 +74,7 @@ func (kd *PositionMap) GetPosition(key []byte) (pos *Position, err error) {
 func (kd *PositionMap) Update(dataFile *DataFile) {
 	offset := int64(0)
 
-	filePath := dataFile.File.Name()
-	hintFilePath := filePath[0:len(filePath)-4] + "hint"
-	_, err := os.Stat(hintFilePath)
-
-	if err != nil && os.IsNotExist(err) {
+	if !dataFile.IsExistHintFile() {
 		// Read the header of each entry
 		for {
 			// Read the header
@@ -93,16 +86,17 @@ func (kd *PositionMap) Update(dataFile *DataFile) {
 			entryHeader, _ := DecodeEntryHeader(headerBuf)
 
 			// Read the key
-			keyBuf, _ := dataFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
+			key, _ := dataFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
 
-			kd.PutPosition(keyBuf, entryHeader, dataFile.FileId, offset)
+			kd.PutPosition(key, entryHeader, dataFile.FileId, offset)
 
 			// Skip to the beginning of the next entry
 			offset += entryHeader.GetSize()
 		}
 	} else {
-		// todo change function
-		hintFile := OpenHintFile(dataFile.FileId, hintFilePath[0:len(hintFilePath)-21])
+		filePath := dataFile.File.Name()
+		dbDir := filePath[0 : len(filePath)-21]
+		hintFile := OpenHintFile(dataFile.FileId, dbDir)
 		defer hintFile.File.Close()
 
 		// Read the header of each hint item
@@ -116,10 +110,10 @@ func (kd *PositionMap) Update(dataFile *DataFile) {
 			hintItemHeader, _ := DecodeHintItemHeader(headerBuf)
 
 			// Read the key
-			keyBuf, _ := hintFile.ReadBuf(int64(hintItemHeader.KeySize), offset+HintItemHeaderSize)
+			key, _ := hintFile.ReadBuf(int64(hintItemHeader.KeySize), offset+HintItemHeaderSize)
 
 			kd.PutPosition(
-				keyBuf,
+				key,
 				&EntryHeader{
 					crc:       0,
 					timeStamp: hintItemHeader.TimeStamp,
@@ -130,84 +124,8 @@ func (kd *PositionMap) Update(dataFile *DataFile) {
 				hintItemHeader.Offset,
 			)
 
-			// Skip to the beginning of the next entry
+			// Skip to the beginning of the next hint item
 			offset += hintItemHeader.GetSize()
 		}
-	}
-}
-
-type HintItemHeader struct {
-	TimeStamp uint32
-	KeySize   uint32
-	ValueSize uint32
-	Offset    int64
-}
-
-type HintItem struct {
-	*HintItemHeader
-	Key []byte
-}
-
-const HintItemHeaderSize = 20
-
-func (h *HintItemHeader) GetSize() int64 {
-	return int64(HintItemHeaderSize + h.KeySize)
-}
-
-func (h *HintItem) EncodeHintItem() []byte {
-	buf := make([]byte, h.GetSize())
-
-	// Header
-	binary.BigEndian.PutUint32(buf[0:4], h.TimeStamp)
-	binary.BigEndian.PutUint32(buf[4:8], h.KeySize)
-	binary.BigEndian.PutUint32(buf[8:12], h.ValueSize)
-	binary.BigEndian.PutUint64(buf[12:20], uint64(h.Offset))
-
-	// Key
-	copy(buf[20:], h.Key)
-
-	return buf
-}
-
-func DecodeHintItemHeader(buf []byte) (hth *HintItemHeader, err error) {
-	if len(buf) != HintItemHeaderSize {
-		err = errors.New("hint item header length doesn't match")
-		return
-	}
-
-	// Header
-	timeStamp := binary.BigEndian.Uint32(buf[0:4])
-	keySize := binary.BigEndian.Uint32(buf[4:8])
-	valueSize := binary.BigEndian.Uint32(buf[8:12])
-	offset := binary.BigEndian.Uint64(buf[12:20])
-
-	hth = &HintItemHeader{
-		TimeStamp: timeStamp,
-		KeySize:   keySize,
-		ValueSize: valueSize,
-		Offset:    int64(offset),
-	}
-
-	return
-}
-
-func DecodeHintItem(buf []byte) *HintItem {
-	// Header
-	timeStamp := binary.BigEndian.Uint32(buf[0:4])
-	keySize := binary.BigEndian.Uint32(buf[4:8])
-	valueSize := binary.BigEndian.Uint32(buf[8:12])
-	offset := binary.BigEndian.Uint64(buf[12:20])
-
-	// Key
-	key := make([]byte, keySize)
-
-	return &HintItem{
-		HintItemHeader: &HintItemHeader{
-			TimeStamp: timeStamp,
-			KeySize:   keySize,
-			ValueSize: valueSize,
-			Offset:    int64(offset),
-		},
-		Key: key,
 	}
 }

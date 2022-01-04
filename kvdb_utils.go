@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-func ReadDataFileId(directory *os.File) []int64 {
+func GetAllDataFileId(directory *os.File) []int64 {
 	fileIdArray := make([]int64, 0)
 
 	memberNames, _ := directory.Readdirnames(-1)
