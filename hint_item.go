@@ -19,26 +19,26 @@ type HintItem struct {
 
 const HintItemHeaderSize = 20
 
-func (h *HintItemHeader) GetSize() int64 {
-	return int64(HintItemHeaderSize + h.KeySize)
+func (hih *HintItemHeader) GetSize() int64 {
+	return int64(HintItemHeaderSize + hih.KeySize)
 }
 
-func (h *HintItem) EncodeHintItem() []byte {
-	buf := make([]byte, h.GetSize())
+func (hi *HintItem) EncodeHintItem() []byte {
+	buf := make([]byte, hi.GetSize())
 
 	// Header
-	binary.BigEndian.PutUint32(buf[0:4], h.TimeStamp)
-	binary.BigEndian.PutUint32(buf[4:8], h.KeySize)
-	binary.BigEndian.PutUint32(buf[8:12], h.ValueSize)
-	binary.BigEndian.PutUint64(buf[12:20], uint64(h.Offset))
+	binary.BigEndian.PutUint32(buf[0:4], hi.TimeStamp)
+	binary.BigEndian.PutUint32(buf[4:8], hi.KeySize)
+	binary.BigEndian.PutUint32(buf[8:12], hi.ValueSize)
+	binary.BigEndian.PutUint64(buf[12:20], uint64(hi.Offset))
 
 	// Key
-	copy(buf[20:], h.Key)
+	copy(buf[20:], hi.Key)
 
 	return buf
 }
 
-func DecodeHintItemHeader(buf []byte) (hth *HintItemHeader, err error) {
+func DecodeHintItemHeader(buf []byte) (hih *HintItemHeader, err error) {
 	if len(buf) != HintItemHeaderSize {
 		err = errors.New("hint item header length doesn't match")
 		return
@@ -50,7 +50,7 @@ func DecodeHintItemHeader(buf []byte) (hth *HintItemHeader, err error) {
 	valueSize := binary.BigEndian.Uint32(buf[8:12])
 	offset := binary.BigEndian.Uint64(buf[12:20])
 
-	hth = &HintItemHeader{
+	hih = &HintItemHeader{
 		TimeStamp: timeStamp,
 		KeySize:   keySize,
 		ValueSize: valueSize,

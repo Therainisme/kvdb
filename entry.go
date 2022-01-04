@@ -51,17 +51,17 @@ func NewEntry(key []byte, value []byte) *Entry {
 /*
 	EncodeEntry function will generate CRC-32 checksum
 */
-func (entry *Entry) EncodeEntry() []byte {
-	buf := make([]byte, entry.GetSize())
+func (e *Entry) EncodeEntry() []byte {
+	buf := make([]byte, e.GetSize())
 
 	// Header
-	binary.BigEndian.PutUint32(buf[4:8], entry.timeStamp)
-	binary.BigEndian.PutUint32(buf[8:12], entry.keySize)
-	binary.BigEndian.PutUint32(buf[12:16], entry.valueSize)
+	binary.BigEndian.PutUint32(buf[4:8], e.timeStamp)
+	binary.BigEndian.PutUint32(buf[8:12], e.keySize)
+	binary.BigEndian.PutUint32(buf[12:16], e.valueSize)
 
 	// Data
-	copy(buf[entryHeaderSize:entryHeaderSize+entry.keySize], entry.Key)
-	copy(buf[entryHeaderSize+entry.keySize:], entry.Value)
+	copy(buf[entryHeaderSize:entryHeaderSize+e.keySize], e.Key)
+	copy(buf[entryHeaderSize+e.keySize:], e.Value)
 
 	// CRC
 	binary.BigEndian.PutUint32(buf[0:4], crc32.ChecksumIEEE(buf[4:]))

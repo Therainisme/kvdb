@@ -27,7 +27,7 @@ func GetAllDataFileId(directory *os.File) []int64 {
 
 // Stored in a Kbdb instance
 type DataFileMap struct {
-	sm sync.Map
+	sm *sync.Map
 }
 
 func (kfMap *DataFileMap) Get(fileId int64) (dataFile *DataFile) {
@@ -52,7 +52,7 @@ func (kfMap *DataFileMap) Delete(fileId int64) {
 
 // Using in merge process
 type EntryMap struct {
-	sm sync.Map
+	sm *sync.Map
 }
 
 func (em *EntryMap) Get(key []byte) (entry *Entry) {

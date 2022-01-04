@@ -6,27 +6,27 @@ type DataFile struct {
 	*KvdbFile
 }
 
-func (kf *DataFile) AppendEntry(entry *Entry) error {
+func (df *DataFile) AppendEntry(entry *Entry) error {
 	buf := entry.EncodeEntry()
-	kf.mutex.Lock()
+	df.mutex.Lock()
 
-	kf.File.WriteAt(buf, kf.offset)
-	kf.offset += int64(len(buf))
+	df.File.WriteAt(buf, df.offset)
+	df.offset += int64(len(buf))
 
-	kf.mutex.Unlock()
+	df.mutex.Unlock()
 	return nil
 }
 
-func (kf *DataFile) ReadEntry(key []byte, pos *Position) (entry *Entry, err error) {
-	targetEntrySize := entryHeaderSize + len(key) + int(pos.ValueSize)
-	buf, _ := kf.ReadBuf(int64(targetEntrySize), pos.Offset)
+func (df *DataFile) ReadEntry(key []byte, keydirItem *KeydirItem) (entry *Entry, err error) {
+	targetEntrySize := entryHeaderSize + len(key) + int(keydirItem.ValueSize)
+	buf, _ := df.ReadBuf(int64(targetEntrySize), keydirItem.Offset)
 
 	entry, err = DecodeEntry(buf)
 	return
 }
 
-func (kf *DataFile) IsExistHintFile() bool {
-	filePath := kf.File.Name()
+func (df *DataFile) IsExistHintFile() bool {
+	filePath := df.File.Name()
 	hintFilePath := filePath[0:len(filePath)-4] + "hint"
 	_, err := os.Stat(hintFilePath)
 	if err != nil && os.IsNotExist(err) {

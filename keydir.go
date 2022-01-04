@@ -5,50 +5,43 @@ import (
 	"sync"
 )
 
-type PositionMap struct {
-	data  map[string]*Position
-	mutex sync.Mutex
+type Keydir struct {
+	sm *sync.Map
 }
 
-type Position struct {
+type KeydirItem struct {
 	FileId    int64
 	ValueSize uint32
 	Offset    int64
 	TimeStamp uint32
 }
 
-func (kd *PositionMap) Set(key []byte, pos *Position) {
-	kd.mutex.Lock()
-
+func (kd *Keydir) Set(key []byte, item *KeydirItem) {
 	// Keydir ensure that the latest index is stored.
-	oldPos := kd.data[string(key)]
-	if oldPos == nil || oldPos.TimeStamp <= pos.TimeStamp {
-		kd.data[string(key)] = pos
+	oldItem := kd.Get(key)
+	if oldItem == nil || oldItem.TimeStamp <= item.TimeStamp {
+		kd.sm.Store(string(key), item)
 	}
-
-	kd.mutex.Unlock()
 }
 
-func (kd *PositionMap) Get(key []byte) (pos *Position) {
-	kd.mutex.Lock()
+func (kd *Keydir) Get(key []byte) (item *KeydirItem) {
 
-	pos = kd.data[string(key)]
-
-	kd.mutex.Unlock()
+	loadRes, ok := kd.sm.Load(string(key))
+	if !ok {
+		item = nil
+	} else {
+		item = loadRes.(*KeydirItem)
+	}
 
 	return
 }
 
-func (kd *PositionMap) Delete(key []byte) {
-	kd.mutex.Lock()
-
-	delete(kd.data, string(key))
-
-	kd.mutex.Unlock()
+func (kd *Keydir) Delete(key []byte) {
+	kd.sm.Delete(string(key))
 }
 
-func (kd *PositionMap) PutPosition(key []byte, entryHeader *EntryHeader, fileId int64, offset int64) error {
-	pos := &Position{
+func (kd *Keydir) PutItem(key []byte, entryHeader *EntryHeader, fileId int64, offset int64) error {
+	pos := &KeydirItem{
 		FileId:    fileId,
 		ValueSize: entryHeader.valueSize,
 		Offset:    offset,
@@ -64,14 +57,14 @@ func (kd *PositionMap) PutPosition(key []byte, entryHeader *EntryHeader, fileId 
 	return nil
 }
 
-func (kd *PositionMap) GetPosition(key []byte) (pos *Position, err error) {
-	pos = kd.Get(key)
+func (kd *Keydir) GetItem(key []byte) (item *KeydirItem, err error) {
+	item = kd.Get(key)
 	err = nil
 	return
 }
 
 // Rebuild keydir of a data file
-func (kd *PositionMap) Update(dataFile *DataFile) {
+func (kd *Keydir) Update(dataFile *DataFile) {
 	offset := int64(0)
 
 	if !dataFile.IsExistHintFile() {
@@ -88,7 +81,7 @@ func (kd *PositionMap) Update(dataFile *DataFile) {
 			// Read the key
 			key, _ := dataFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
 
-			kd.PutPosition(key, entryHeader, dataFile.FileId, offset)
+			kd.PutItem(key, entryHeader, dataFile.FileId, offset)
 
 			// Skip to the beginning of the next entry
 			offset += entryHeader.GetSize()
@@ -112,7 +105,7 @@ func (kd *PositionMap) Update(dataFile *DataFile) {
 			// Read the key
 			key, _ := hintFile.ReadBuf(int64(hintItemHeader.KeySize), offset+HintItemHeaderSize)
 
-			kd.PutPosition(
+			kd.PutItem(
 				key,
 				&EntryHeader{
 					crc:       0,

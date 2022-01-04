@@ -6,8 +6,8 @@ type HintFile struct {
 	*KvdbFile
 }
 
-func (hf *HintFile) AppendHintItem(ht *HintItem) error {
-	buf := ht.EncodeHintItem()
+func (hf *HintFile) AppendHintItem(hintItem *HintItem) error {
+	buf := hintItem.EncodeHintItem()
 	hf.mutex.Lock()
 
 	hf.File.WriteAt(buf, hf.offset)

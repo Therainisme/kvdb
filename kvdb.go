@@ -8,43 +8,43 @@ import (
 	"time"
 )
 
-func Open(directoryPath string) *KvdbHandle {
-	directory, err := os.Open(directoryPath)
+func Open(dbDir string) *KvdbHandle {
+	directory, err := os.Open(dbDir)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	directoryInfo, _ := directory.Stat()
 	if !directoryInfo.IsDir() {
-		panic(fmt.Sprintf("\"%s\" is not a directory\n", directoryPath))
+		panic(fmt.Sprintf("\"%s\" is not a directory\n", dbDir))
 	}
 
 	dfIdArray := GetAllDataFileId(directory)
-	fileMap, keydir := InitIndex(dfIdArray, directoryPath)
+	fileMap, keydir := InitIndex(dfIdArray, dbDir)
 
 	return &KvdbHandle{
-		DirectoryPath: directoryPath,
-		Keydir:        keydir,
-		DataFileMap:   fileMap,
+		dbDir:       dbDir,
+		keydir:      keydir,
+		dataFileMap: fileMap,
 	}
 }
 
 type KvdbHandle struct {
-	DirectoryPath  string
-	Keydir         *PositionMap
-	DataFileMap    *DataFileMap
-	ActiveDataFile *DataFile
+	dbDir          string
+	keydir         *Keydir
+	dataFileMap    *DataFileMap
+	activeDataFile *DataFile
 }
 
 type Keys = []string
 
 func (db *KvdbHandle) Get(key []byte) ([]byte, error) {
-	pos := db.Keydir.Get(key)
+	pos := db.keydir.Get(key)
 	if pos == nil {
 		return []byte(""), nil
 	}
 
-	kf := db.DataFileMap.Get(pos.FileId)
+	kf := db.dataFileMap.Get(pos.FileId)
 	entry, err := kf.ReadEntry(key, pos)
 
 	return entry.Value, err
@@ -54,22 +54,22 @@ func (db *KvdbHandle) Put(key []byte, value []byte) error {
 	entry := NewEntry(key, value)
 
 	// The DB must have an active file to write entries to.
-	if db.ActiveDataFile == nil {
+	if db.activeDataFile == nil {
 		fileId := time.Now().Unix()
-		db.ActiveDataFile = CreateActiveDataFile(fileId, db.DirectoryPath)
-		db.DataFileMap.Set(fileId, db.ActiveDataFile)
+		db.activeDataFile = CreateActiveDataFile(fileId, db.dbDir)
+		db.dataFileMap.Set(fileId, db.activeDataFile)
 	}
 
 	// Update keydir
-	db.Keydir.PutPosition(
+	db.keydir.PutItem(
 		key,
 		entry.EntryHeader,
-		db.ActiveDataFile.FileId,
-		db.ActiveDataFile.offset,
+		db.activeDataFile.FileId,
+		db.activeDataFile.offset,
 	)
 
 	// Write to active file
-	err := db.ActiveDataFile.AppendEntry(entry)
+	err := db.activeDataFile.AppendEntry(entry)
 
 	return err
 }
@@ -85,12 +85,14 @@ func (handle *KvdbHandle) ListKeys() Keys {
 }
 
 func (db *KvdbHandle) Merge() error {
-	mergedFile := CreateMergedDataFile(time.Now().Unix(), db.DirectoryPath)
+	mergedFile := CreateMergedDataFile(time.Now().Unix(), db.dbDir)
 
-	redundantEntryMap := &EntryMap{}
+	redundantEntryMap := &EntryMap{
+		sm: &sync.Map{},
+	}
 
 	// Iterate over all keys
-	db.DataFileMap.sm.Range(func(key, value interface{}) bool {
+	db.dataFileMap.sm.Range(func(key, value interface{}) bool {
 		dataFile := value.(*DataFile)
 		if dataFile.Type != OlderType {
 			return true
@@ -118,13 +120,13 @@ func (db *KvdbHandle) Merge() error {
 		return true
 	})
 
-	hintFile := CreateHintFile(mergedFile.FileId, db.DirectoryPath)
+	hintFile := CreateHintFile(mergedFile.FileId, db.dbDir)
 
 	// Write to merged file
 	redundantEntryMap.sm.Range(func(key, value interface{}) bool {
 		entry := value.(*Entry)
 		// Update keydir
-		db.Keydir.PutPosition(entry.Key, entry.EntryHeader, mergedFile.FileId, mergedFile.offset)
+		db.keydir.PutItem(entry.Key, entry.EntryHeader, mergedFile.FileId, mergedFile.offset)
 
 		// Write index to hint file
 		hintFile.AppendHintItem(&HintItem{
@@ -144,13 +146,13 @@ func (db *KvdbHandle) Merge() error {
 	})
 
 	// Remove old data file
-	db.DataFileMap.sm.Range(func(key, value interface{}) bool {
+	db.dataFileMap.sm.Range(func(key, value interface{}) bool {
 		kvdbFile := value.(*DataFile)
 		if kvdbFile.Type != OlderType {
 			return true
 		}
 		kvdbFile.File.Close()
-		db.DataFileMap.Delete(kvdbFile.FileId)
+		db.dataFileMap.Delete(kvdbFile.FileId)
 
 		os.Remove(kvdbFile.File.Name())
 		return true
@@ -158,7 +160,7 @@ func (db *KvdbHandle) Merge() error {
 
 	// After merge process, merged file will be as a ordinary data file
 	mergedFile.Type = OlderType
-	db.DataFileMap.Set(mergedFile.FileId, mergedFile)
+	db.dataFileMap.Set(mergedFile.FileId, mergedFile)
 	return nil
 }
 
@@ -170,13 +172,12 @@ func (handle *KvdbHandle) Close() error {
 	return nil
 }
 
-func InitIndex(dfIdArray []int64, directoryPath string) (*DataFileMap, *PositionMap) {
+func InitIndex(dfIdArray []int64, directoryPath string) (*DataFileMap, *Keydir) {
 	var kvdbFileMap DataFileMap = DataFileMap{
-		sm: sync.Map{},
+		sm: &sync.Map{},
 	}
-	var keydir PositionMap = PositionMap{
-		data:  make(map[string]*Position),
-		mutex: sync.Mutex{},
+	var keydir Keydir = Keydir{
+		sm: &sync.Map{},
 	}
 
 	for _, dfId := range dfIdArray {
