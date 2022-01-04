@@ -111,10 +111,7 @@ func (db *KvdbHandle) Merge() error {
 			entryBuf, _ := kvdbFile.ReadBuf(entryHeader.GetSize(), offset)
 			entry, _ := DecodeEntry(entryBuf)
 
-			oldEntry := redundantEntryMap.Get(entry.Key)
-			if oldEntry == nil || oldEntry.timeStamp <= entry.timeStamp {
-				redundantEntryMap.Set(entry.Key, entry)
-			}
+			redundantEntryMap.Set(entry.Key, entry)
 
 			offset += entry.GetSize()
 		}

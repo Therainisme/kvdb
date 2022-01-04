@@ -50,6 +50,7 @@ func (kfMap *KvdbFileMap) Delete(fileId int64) {
 	kfMap.sm.Delete(fileId)
 }
 
+// Using in merge process
 type EntryMap struct {
 	sm sync.Map
 }
@@ -67,5 +68,8 @@ func (em *EntryMap) Get(key []byte) (entry *Entry) {
 }
 
 func (em *EntryMap) Set(key []byte, entry *Entry) {
-	em.sm.Store(string(key), entry)
+	oldEntry := em.Get(entry.Key)
+	if oldEntry == nil || oldEntry.timeStamp <= entry.timeStamp {
+		em.sm.Store(string(key), entry)
+	}
 }

@@ -20,8 +20,8 @@ type Position struct {
 func (kd *PositionMap) Set(key []byte, pos *Position) {
 	kd.mutex.Lock()
 
+	// Keydir ensure that the latest index is stored.
 	oldPos := kd.data[string(key)]
-
 	if oldPos == nil || oldPos.TimeStamp <= pos.TimeStamp {
 		kd.data[string(key)] = pos
 	}
