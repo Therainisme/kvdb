@@ -1,7 +1,6 @@
 package kvdb
 
 import (
-	"fmt"
 	"io"
 	"sync"
 )
@@ -73,25 +72,20 @@ func (kd *PositionMap) GetPosition(key []byte) (pos *Position, err error) {
 
 // Rebuild keydir of a data file
 func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
-	headerBuf := make([]byte, entryHeaderSize)
 	offset := int64(0)
 
 	// Read the header of each entry
 	for {
-		_, err := kvdbFile.File.ReadAt(headerBuf, offset)
-		if err != nil {
-			if err == io.EOF {
-				return
-			} else {
-				panic(fmt.Sprintf("Update keydir failed, fileId:%d, err:%v", kvdbFile.FileId, err))
-			}
+		// Read the header
+		headerBuf, err := kvdbFile.ReadBuf(entryHeaderSize, offset)
+		if err != nil && err == io.EOF {
+			return
 		}
 
-		entryHeader, _ := EntryHeaderDecode(headerBuf)
+		entryHeader, _ := DecodeEntryHeader(headerBuf)
 
 		// Read the key
-		keyBuf := make([]byte, entryHeader.keySize)
-		_, _ = kvdbFile.File.ReadAt(keyBuf, offset+entryHeaderSize)
+		keyBuf, _ := kvdbFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
 
 		kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
 

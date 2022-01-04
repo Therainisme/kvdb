@@ -49,9 +49,9 @@ func NewEntry(key []byte, value []byte) *Entry {
 }
 
 /*
-	Encode function will generate CRC-32 checksum
+	EncodeEntry function will generate CRC-32 checksum
 */
-func (entry *Entry) Encode() []byte {
+func (entry *Entry) EncodeEntry() []byte {
 	buf := make([]byte, entry.GetSize())
 
 	// Header
@@ -71,7 +71,7 @@ func (entry *Entry) Encode() []byte {
 /*
 	Decode function will verify CRC-32 checksum
 */
-func EntryDecode(buf []byte) (entry *Entry, err error) {
+func DecodeEntry(buf []byte) (entry *Entry, err error) {
 	// Header
 	crc := binary.BigEndian.Uint32(buf[0:4])
 	timeStamp := binary.BigEndian.Uint32(buf[4:8])
@@ -104,7 +104,7 @@ func EntryDecode(buf []byte) (entry *Entry, err error) {
 	return
 }
 
-func EntryHeaderDecode(buf []byte) (entryHeader *EntryHeader, err error) {
+func DecodeEntryHeader(buf []byte) (entryHeader *EntryHeader, err error) {
 	if len(buf) != 16 {
 		err = errors.New("Entry header length doesn't match")
 		return

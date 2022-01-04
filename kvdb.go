@@ -97,24 +97,19 @@ func (db *KvdbHandle) Merge() error {
 			return true
 		}
 
-		headerBuf := make([]byte, 16)
 		offset := int64(0)
 
 		for {
-			_, err := kvdbFile.File.ReadAt(headerBuf, offset)
-			if err != nil {
-				if err == io.EOF {
-					break
-				} else {
-					panic(fmt.Sprintf("Merged data file failed, fileId:%d, err:%v", kvdbFile.FileId, err))
-				}
+			// Read the header
+			headerBuf, err := kvdbFile.ReadBuf(entryHeaderSize, offset)
+			if err != nil && err == io.EOF {
+				break
 			}
+			entryHeader, _ := DecodeEntryHeader(headerBuf)
 
-			entryHeader, _ := EntryHeaderDecode(headerBuf)
-
-			entryBuf := make([]byte, entryHeader.GetSize())
-			_, _ = kvdbFile.File.ReadAt(entryBuf, offset)
-			entry, _ := EntryDecode(entryBuf)
+			// Read the entry
+			entryBuf, _ := kvdbFile.ReadBuf(entryHeader.GetSize(), offset)
+			entry, _ := DecodeEntry(entryBuf)
 
 			oldEntry := redundantEntryMap.Get(entry.Key)
 			if oldEntry == nil || oldEntry.timeStamp <= entry.timeStamp {
