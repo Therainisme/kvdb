@@ -10,6 +10,7 @@ import (
 
 const (
 	DataFileSuffix = ".kvdb.data"
+	HintFileSuffix = ".kvdb.hint"
 )
 
 const (
@@ -47,6 +48,26 @@ func CreateMergedDataFile(fileId int64, dir string) *KvdbFile {
 	}
 }
 
+func CreateHintFile(fileId int64, dir string) *KvdbFile {
+	file := openFile(fileId, dir, HintFileSuffix, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	return &KvdbFile{
+		File:   file,
+		FileId: fileId,
+		Type:   HintType,
+		offset: 0,
+	}
+}
+
+func OpenHintFile(fileId int64, dir string) *KvdbFile {
+	file := openFile(fileId, dir, HintFileSuffix, os.O_RDONLY, 0666)
+	return &KvdbFile{
+		File:   file,
+		FileId: fileId,
+		Type:   HintType,
+		offset: 0,
+	}
+}
+
 func OpenOlderDataFile(fileId int64, dir string) *KvdbFile {
 	file := openFile(fileId, dir, DataFileSuffix, os.O_RDONLY, 0666)
 	return &KvdbFile{
@@ -68,6 +89,17 @@ func openFile(fileId int64, dir string, suffix string, flag int, perm fs.FileMod
 
 func (kf *KvdbFile) AppendEntry(entry *Entry) error {
 	buf := entry.EncodeEntry()
+	kf.mutex.Lock()
+
+	kf.File.WriteAt(buf, kf.offset)
+	kf.offset += int64(len(buf))
+
+	kf.mutex.Unlock()
+	return nil
+}
+
+func (kf *KvdbFile) AppendHintItem(ht *HintItem) error {
+	buf := ht.EncodeHintItem()
 	kf.mutex.Lock()
 
 	kf.File.WriteAt(buf, kf.offset)

@@ -119,15 +119,30 @@ func (db *KvdbHandle) Merge() error {
 		return true
 	})
 
+	hintFile := CreateHintFile(mergedFile.FileId, db.DirectoryPath)
+
 	// Write to merged file
 	redundantEntryMap.sm.Range(func(key, value interface{}) bool {
 		entry := value.(*Entry)
+		// Update keydir
 		db.Keydir.PutPosition(entry.Key, entry.EntryHeader, mergedFile.FileId, mergedFile.offset)
+
+		// Write index to hint file
+		hintFile.AppendHintItem(&HintItem{
+			HintItemHeader: &HintItemHeader{
+				TimeStamp: entry.timeStamp,
+				KeySize:   entry.keySize,
+				ValueSize: entry.valueSize,
+				Offset:    mergedFile.offset,
+			},
+			Key: entry.Key,
+		})
+
+		// Write to merged file
+		// Can update merged file offset
 		mergedFile.AppendEntry(entry)
 		return true
 	})
-
-	// todo generate hint file
 
 	// Remove old file
 	db.FileMap.sm.Range(func(key, value interface{}) bool {
