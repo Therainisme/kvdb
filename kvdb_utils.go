@@ -26,27 +26,27 @@ func ReadDataFileId(directory *os.File) []int64 {
 }
 
 // Stored in a Kbdb instance
-type KvdbFileMap struct {
+type DataFileMap struct {
 	sm sync.Map
 }
 
-func (kfMap *KvdbFileMap) Get(fileId int64) (kvdbFile *KvdbFile) {
+func (kfMap *DataFileMap) Get(fileId int64) (dataFile *DataFile) {
 
 	loadRes, ok := kfMap.sm.Load(fileId)
 	if !ok {
-		kvdbFile = nil
+		dataFile = nil
 	} else {
-		kvdbFile = loadRes.(*KvdbFile)
+		dataFile = loadRes.(*DataFile)
 	}
 
 	return
 }
 
-func (kfMap *KvdbFileMap) Set(fileId int64, kvdbFile *KvdbFile) {
-	kfMap.sm.Store(fileId, kvdbFile)
+func (kfMap *DataFileMap) Set(fileId int64, dataFile *DataFile) {
+	kfMap.sm.Store(fileId, dataFile)
 }
 
-func (kfMap *KvdbFileMap) Delete(fileId int64) {
+func (kfMap *DataFileMap) Delete(fileId int64) {
 	kfMap.sm.Delete(fileId)
 }
 

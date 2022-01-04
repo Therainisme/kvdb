@@ -74,10 +74,10 @@ func (kd *PositionMap) GetPosition(key []byte) (pos *Position, err error) {
 }
 
 // Rebuild keydir of a data file
-func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
+func (kd *PositionMap) Update(dataFile *DataFile) {
 	offset := int64(0)
 
-	filePath := kvdbFile.File.Name()
+	filePath := dataFile.File.Name()
 	hintFilePath := filePath[0:len(filePath)-4] + "hint"
 	_, err := os.Stat(hintFilePath)
 
@@ -85,7 +85,7 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 		// Read the header of each entry
 		for {
 			// Read the header
-			headerBuf, err := kvdbFile.ReadBuf(entryHeaderSize, offset)
+			headerBuf, err := dataFile.ReadBuf(entryHeaderSize, offset)
 			if err != nil && err == io.EOF {
 				return
 			}
@@ -93,16 +93,16 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 			entryHeader, _ := DecodeEntryHeader(headerBuf)
 
 			// Read the key
-			keyBuf, _ := kvdbFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
+			keyBuf, _ := dataFile.ReadBuf(int64(entryHeader.keySize), offset+entryHeaderSize)
 
-			kd.PutPosition(keyBuf, entryHeader, kvdbFile.FileId, offset)
+			kd.PutPosition(keyBuf, entryHeader, dataFile.FileId, offset)
 
 			// Skip to the beginning of the next entry
 			offset += entryHeader.GetSize()
 		}
 	} else {
 		// todo change function
-		hintFile := OpenHintFile(kvdbFile.FileId, hintFilePath[0:len(hintFilePath)-21])
+		hintFile := OpenHintFile(dataFile.FileId, hintFilePath[0:len(hintFilePath)-21])
 		defer hintFile.File.Close()
 
 		// Read the header of each hint item
@@ -126,11 +126,9 @@ func (kd *PositionMap) Update(kvdbFile *KvdbFile) {
 					keySize:   hintItemHeader.KeySize,
 					valueSize: hintItemHeader.ValueSize,
 				},
-				kvdbFile.FileId,
+				dataFile.FileId,
 				hintItemHeader.Offset,
 			)
-
-			println(hintItemHeader.KeySize)
 
 			// Skip to the beginning of the next entry
 			offset += hintItemHeader.GetSize()
@@ -173,7 +171,7 @@ func (h *HintItem) EncodeHintItem() []byte {
 
 func DecodeHintItemHeader(buf []byte) (hth *HintItemHeader, err error) {
 	if len(buf) != HintItemHeaderSize {
-		err = errors.New("Hint item header length doesn't match")
+		err = errors.New("hint item header length doesn't match")
 		return
 	}
 
