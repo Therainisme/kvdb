@@ -155,6 +155,10 @@ func (db *KvdbHandle) Merge() error {
 		db.dataFileMap.Delete(kvdbFile.FileId)
 
 		os.Remove(kvdbFile.File.Name())
+		if kvdbFile.IsExistHintFile() {
+			os.Remove(DFPathToHFPath(kvdbFile.File.Name()))
+		}
+
 		return true
 	})
 

@@ -25,9 +25,13 @@ func (df *DataFile) ReadEntry(key []byte, keydirItem *KeydirItem) (entry *Entry,
 	return
 }
 
+func DFPathToHFPath(dataFilePath string) (hintFilePath string) {
+	return dataFilePath[0:len(dataFilePath)-4] + "hint"
+}
+
 func (df *DataFile) IsExistHintFile() bool {
 	filePath := df.File.Name()
-	hintFilePath := filePath[0:len(filePath)-4] + "hint"
+	hintFilePath := DFPathToHFPath(filePath)
 	_, err := os.Stat(hintFilePath)
 	if err != nil && os.IsNotExist(err) {
 		return false
