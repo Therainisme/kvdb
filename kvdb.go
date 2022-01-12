@@ -170,12 +170,25 @@ func (db *KvdbHandle) Merge() error {
 	return nil
 }
 
-func (handle *KvdbHandle) Sync() error {
-	return nil
+func (db *KvdbHandle) Sync() error {
+	return db.activeDataFile.File.Sync()
 }
 
-func (handle *KvdbHandle) Close() error {
-	return nil
+func (db *KvdbHandle) Close() bool {
+	// close active data file
+	err := db.activeDataFile.File.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	// close older data file
+	db.dataFileMap.sm.Range(func(key, value interface{}) bool {
+		kvdbFile := value.(*DataFile)
+		kvdbFile.File.Close()
+		return true
+	})
+
+	return true
 }
 
 func InitIndex(dfIdArray []int64, directoryPath string) (*DataFileMap, *Keydir) {
@@ -189,7 +202,7 @@ func InitIndex(dfIdArray []int64, directoryPath string) (*DataFileMap, *Keydir) 
 	for _, dfId := range dfIdArray {
 		kvdbFile := OpenOlderDataFile(dfId, directoryPath)
 		kvdbFileMap.Set(dfId, kvdbFile)
-		keydir.Update(kvdbFile)
+		go keydir.Update(kvdbFile)
 	}
 
 	return &kvdbFileMap, &keydir
