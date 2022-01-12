@@ -38,8 +38,6 @@ type KvdbHandle struct {
 	activeDataFile *DataFile
 }
 
-type Keys = []string
-
 func (db *KvdbHandle) Get(key []byte) ([]byte, error) {
 	pos := db.keydir.Get(key)
 	if pos == nil {
@@ -81,9 +79,16 @@ func (db *KvdbHandle) Delete(key []byte) error {
 	return nil
 }
 
-func (handle *KvdbHandle) ListKeys() Keys {
-	// todo
-	return nil
+func (db *KvdbHandle) ListKeys() []string {
+	keys := make([]string, 0)
+	db.keydir.sm.Range(func(key, value interface{}) bool {
+		theKey := key.(string)
+		keys = append(keys, theKey)
+
+		return true
+	})
+
+	return keys
 }
 
 func (db *KvdbHandle) Merge() error {
