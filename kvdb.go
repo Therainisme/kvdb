@@ -9,6 +9,8 @@ import (
 )
 
 func Open(dbDir string) *KvdbHandle {
+	tryCreateDir(dbDir)
+
 	directory, err := os.Open(dbDir)
 	if err != nil {
 		panic(err.Error())

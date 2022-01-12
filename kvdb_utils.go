@@ -73,3 +73,19 @@ func (em *EntryMap) Set(key []byte, entry *Entry) {
 		em.sm.Store(string(key), entry)
 	}
 }
+
+func isExistPath(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		return os.IsExist(err)
+	}
+	return true
+}
+
+func tryCreateDir(path string) error {
+	if !isExistPath(path) {
+		err := os.MkdirAll(path, os.ModePerm)
+		return err
+	}
+	return nil
+}
